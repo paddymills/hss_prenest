@@ -51,7 +51,8 @@ def run_xml_import():
         while 1:
             inbound = len(os.listdir(_input_dir))
             errors = int(len(os.listdir(_error_dir)) / 2)
-            print("\rInbound: {}\tErrors: {}".format(inbound, errors), end='')
+            print("\rInbound: {:>5}\tErrors: {:>5}".format(
+                inbound, errors), end='')
 
             if inbound == 0:
                 break
