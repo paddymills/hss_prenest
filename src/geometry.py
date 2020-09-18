@@ -7,10 +7,13 @@ import codecs
 import json
 import os
 import math
+import threading
 
 XML_IMPORT_EXEC = r"\\HSSIENG\SNDataDev\__oys\bin\SNImportXML\SNImportXML.exe"
 
-_dir = r'\\HSSIENG\SNDataDev\__oys\SNImportXML\Input'
+_dir = r'\\HSSIENG\SNDataDev\__oys\SNImportXML'
+_input_dir = os.path.join(_dir, "Input")
+_error_dir = os.path.join(_dir, "Error")
 _prenest = r"\\hssieng\SNDataDev\PARTS\Prenesting"
 templates = 'xml'
 
@@ -41,7 +44,30 @@ dim_alias = {
 
 
 def run_xml_import():
-    os.system(XML_IMPORT_EXEC + " PROCESSXML")
+    def main_thread():
+        os.system(XML_IMPORT_EXEC + " PROCESSXML")
+
+    def progress_thread():
+        while 1:
+            inbound = len(os.listdir(_input_dir))
+            errors = int(len(os.listdir(_error_dir)) / 2)
+            print("\rInbound: {}\tErrors: {}".format(inbound, errors), end='')
+
+            if inbound == 0:
+                break
+        print("\n")
+
+    # create thraeds
+    main = threading.Thread(target=main_thread)
+    progress = threading.Thread(target=progress_thread)
+
+    # start threads
+    main.start()
+    progress.start()
+
+    # join (wait to end) threads
+    main.join()
+    progress.join()
 
 
 def load_defaults():
@@ -162,7 +188,7 @@ class Part:
 
     @property
     def xml_file(self):
-        return os.path.join(_dir, (self.__attrs['PartName'] + '.xml'))
+        return os.path.join(_input_dir, (self.__attrs['PartName'] + '.xml'))
 
     def generate_xml(self):
         if not self.__geo:

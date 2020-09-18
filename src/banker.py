@@ -4,23 +4,49 @@ import re
 
 import geometry
 
+SHEET_NAME = re.compile("\d+\w-\d+")
 NUM_FRAC = re.compile(r'(\d+)?\s*(\d+/\d+)?"')
 GRADE = re.compile(r"ASTM\s*(A\d+)-\w*.?\s*(\d+)\s*\w*")
+
+EXPECTED_HEADER = ["Group", "Item", "Qty", "Description", None, "Length",
+                   "Specification", "Testing", "Weight", "Pcmark", "Girder Mark"]
 
 
 def main():
     wb = xlwings.books.active
-    s = wb.sheets["1200131D-7"]
+    for sheet in wb.sheets:
+        if not SHEET_NAME.match(sheet.name):
+            continue
 
-    job, shipment = s.name.split("-")
+        print("Processing sheet: {}".format(sheet.name))
+        result = process_sheet(sheet)
+        job, shipment = sheet.name.split("-")
+
+        for p in result.values():
+            p["part"] = f"{job}-{shipment}_{p['part']}"
+            p["WO"] = f"PN_{job}-{shipment}"
+            geo = geometry.Part(prenest=True, **p)
+            geo.generate_xml()
+
+    run = input("Run xml import? ")
+    if run.upper().startswith("Y"):
+        geometry.run_xml_import()
+
+
+def process_sheet(sheet):
     parts = dict()
 
+    # validate header
+    header = sheet.range((4, 1), (4, 11)).value
+    assert header == EXPECTED_HEADER, "Header mismatch on sheet: " + sheet.name
+
+    job, shipment = sheet.name.split("-")
     i = 4
     while 1:
         # increment at beginning so we can use the `continue` statement
         i += 1
 
-        row = s.range((i, 1), (i, 11)).value
+        row = sheet.range((i, 1), (i, 11)).value
         for _i, x in enumerate(row):
             if x and type(x) is str:
                 row[_i] = x.strip()
@@ -30,6 +56,8 @@ def main():
 
         if process(row):
             part = parse_row(row)
+            part["job"] = job
+            part["shipment"] = shipment
 
             if part["part"] in parts.keys():
                 in_dict = parts[part["part"]]
@@ -43,12 +71,7 @@ def main():
 
             parts[part["part"]] = part
 
-    for p in parts.values():
-        p["part"] = f"{job}-{shipment}_{p['part']}"
-        p["WO"] = f"PN_{job}-{shipment}"
-        geo = geometry.Part(prenest=True, **p)
-        geo.generate_xml()
-        print(p)
+    return parts
 
 
 def parse_row(row):
@@ -61,7 +84,7 @@ def parse_row(row):
 
     return dict(
         mm=mm,
-        qty=qty,
+        qty=int(qty),
         thk=thk,
         wid=wid,
         len=length,
