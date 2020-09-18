@@ -6,7 +6,7 @@ import geometry
 
 SHEET_NAME = re.compile("\d+\w-\d+")
 NUM_FRAC = re.compile(r'(\d+)?\s*(\d+/\d+)?"')
-GRADE = re.compile(r"ASTM\s*(A\d+)-\w*.?\s*(\d+)\s*\w*")
+GRADE = re.compile(r"(?:ASTM\s)?(A\d+)-\w*\.?\s*(\d+)\s*\w*")
 
 EXPECTED_HEADER = ["Group", "Item", "Qty", "Description", None, "Length",
                    "Specification", "Testing", "Weight", "Pcmark", "Girder Mark"]
